@@ -24,15 +24,15 @@ namespace ninezoneexample
         public void RunorOut()
         {
             int additionalPoint = 0;
-            while(Base.current_H.Count>0) {
-                Base.current_H.Dequeue();
+            foreach(var player in Base.current_H) {
                 additionalPoint++;
             }
             while(Base.current_O.Count>0)
             {
-                Base.current_O.Dequeue();
                 O++;
             }
+            Base.current_H.Clear();
+            Base.current_O.Clear();
             
         }
     }

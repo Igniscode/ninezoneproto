@@ -14,12 +14,75 @@ namespace ninezoneexample
         public BaseState Base = new BaseState();
         public string Pitcher = "None";
         public string Batter = "None";
-        public TeamInformation redTeam = new TeamInformation("Socks");
-        public TeamInformation blueTeam = new TeamInformation("Shoes");
+        public TeamInformation TopTeam = new TeamInformation("Socks");
+        public TeamInformation BottomTeam = new TeamInformation("Shoes");
         public int inning = 0;
+        public string TopBottom = "Top";
+        public string AttackTeam;
         public int S = 0;
         public int B = 0;
         public int O = 0;
+        public Queue<string> GameLog = new Queue<string>();
+        
+        public void InningStart()
+        {
+            GameLog.Enqueue("<I>" + inning.ToString());
+        }
+
+        public void SetAttackTeam(string tb)
+        {
+            if (TopBottom == "Top") AttackTeam = TopTeam.Name;
+            else if (TopBottom == "Bottom") AttackTeam = BottomTeam.Name;
+            GameLog.Enqueue("<T>" + AttackTeam);
+        }
+
+        public void SetBatter()
+        {
+            int batterNumber = 0;
+            if (TopBottom == "Top") {
+                batterNumber = TopTeam.batorder[Base.batOrder];
+                Batter = TopTeam.players[batterNumber];
+            }
+            else if (TopBottom == "Bottom")
+            {
+                batterNumber = BottomTeam.batorder[Base.batOrder];
+                Batter = BottomTeam.players[batterNumber];
+            }
+            GameLog.Enqueue("<B>" + Base.batOrder + "#" + batterNumber + "!" + Batter);
+        }
+        public void Pitch(PitchCase @case)
+        {
+            switch (@case)
+            {
+                case PitchCase.STRIKE:
+                    break;
+                case PitchCase.SWING:
+                    break;
+                case PitchCase.BALL:
+                    break;
+                case PitchCase.FOUL:
+                    break;
+                case PitchCase.HIT:
+                    break;
+                case PitchCase.BUNT:
+                    break;
+                case PitchCase.HOMERUN:
+                    break;
+                case PitchCase.HIT_BY_PITCH:
+                    break;
+            }
+        }
+
+        public void Accident(AccidentCase @case)
+        {
+            switch (@case)
+            {
+                case AccidentCase.PICKOFF:
+                    break;
+                case AccidentCase.STEAL:
+                    break;
+            }
+        }
 
         public void RunorOut()
         {
@@ -40,6 +103,8 @@ namespace ninezoneexample
     {
         public string Name = "None";
         public int Score = 0;
+        public Dictionary<int, string> players = new Dictionary<int, string>();
+        public Dictionary<int, int> batorder = new Dictionary<int, int>();
         public TeamInformation(string name)
         {
             Name = name;
@@ -59,48 +124,49 @@ namespace ninezoneexample
         public string current_1B = "None";
         public string current_2B = "None";
         public string current_3B = "None";
+        public int batOrder = 0;
         public List<string> current_H = new List<string>();//홈인 한 사람
         public List<string> current_O = new List<string>();//아웃 된 사람
-        
-        public Queue<TurnEndLog> log(List<Position> defence, string batter, int outcount)
-        {
-            Queue<TurnEndLog> ret = new Queue<TurnEndLog>();
+        public Queue<TurnEndLog> log = new Queue<TurnEndLog>();
 
+        public void HitCaseLog(List<Position> defence, string batter, int outcount)
+        {
+            if (current_O.Count == 0)
+            {
+
+            }
             if (current_O.Count == 1) // 아웃 한사람 1명
             {
                 if (defence.Count == 1) // 수비 관여한 사람 1명
                 {
                     if (current_H.Count > 0)// 홈인 한 사람 1명 이상
                     {
-                        ret.Enqueue(TurnEndLog.SACRIFICE_FLY);
+                        log.Enqueue(TurnEndLog.SACRIFICE_FLY);
                     }
-                    ret.Enqueue(TurnEndLog.FLYOUT);
+                    else log.Enqueue(TurnEndLog.FLYOUT);
                 }
-                if(defence.Count > 1) // 수비 관여한 사람 2명 이상
+                else if (defence.Count > 1) // 수비 관여한 사람 2명 이상
                 {
-
+                    log.Enqueue(TurnEndLog.GROUNDOUT);
                 }
             }
             if (current_O.Count == 2) //아웃한 사람 2명
             {
                 if (defence.Count == 1)
                 {
-                    ret.Enqueue(TurnEndLog.DOUBLE_PLAY);
+                    log.Enqueue(TurnEndLog.DOUBLE_PLAY);
                 }
             }
             if (current_O.Count == 3) //아웃한 사람 3명
             {
-                if (outcount == 0) ret.Enqueue(TurnEndLog.TRIPLE_PLAY);
-                else if (outcount == 1) ret.Enqueue(TurnEndLog.DOUBLE_PLAY);
+                if (outcount == 0) log.Enqueue(TurnEndLog.TRIPLE_PLAY);
+                else if (outcount == 1) log.Enqueue(TurnEndLog.DOUBLE_PLAY);
 
             }
 
             last_1B = current_1B;
             last_2B = current_2B;
             last_3B = current_3B;
-
-
-            return ret;
         }
         int advancedCountWithoutHomein()
         {
@@ -132,7 +198,7 @@ namespace ninezoneexample
         PALMBALL,
         CHANGEUP
     }
-    enum PitchLog
+    enum PitchCase
     {
         HIT,
         BUNT,
@@ -140,8 +206,10 @@ namespace ninezoneexample
         SWING,
         BALL,
         FOUL,
+        HOMERUN,//홈런
+        HIT_BY_PITCH,//데드볼
     }
-    enum AccidentLog
+    enum AccidentCase
     {
         STEAL,//도루
         PICKOFF,//견제사

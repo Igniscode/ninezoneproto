@@ -11,22 +11,19 @@ namespace ninezoneexample
     }
     class StateProcessManager
     {
-        public BaseState Base = new BaseState();
+        BaseState Base = new BaseState();
         public string Pitcher = "None";
-        public string Batter = "None";
-        public TeamInformation TopTeam = new TeamInformation("Socks");
-        public TeamInformation BottomTeam = new TeamInformation("Shoes");
+        TeamInformation TopTeam = new TeamInformation("Socks");
+        TeamInformation BottomTeam = new TeamInformation("Shoes");
         public int inning = 0;
-        public string TopBottom = "Top";
+        public string TopBottom = "Top"; // 현재 공격인 팀
         public string AttackTeam;
-        public int S = 0;
-        public int B = 0;
-        public int O = 0;
+
         public Queue<string> GameLog = new Queue<string>();
         
         public void InningStart()
         {
-            GameLog.Enqueue("<I>" + inning.ToString());
+            GameLog.Enqueue("<I>" + inning.ToString());  
         }
 
         public void SetAttackTeam(string tb)
@@ -38,17 +35,12 @@ namespace ninezoneexample
 
         public void SetBatter()
         {
-            int batterNumber = 0;
-            if (TopBottom == "Top") {
-                batterNumber = TopTeam.batorder[Base.batOrder];
-                Batter = TopTeam.players[batterNumber];
-            }
-            else if (TopBottom == "Bottom")
-            {
-                batterNumber = BottomTeam.batorder[Base.batOrder];
-                Batter = BottomTeam.players[batterNumber];
-            }
-            GameLog.Enqueue("<B>" + Base.batOrder + "#" + batterNumber + "!" + Batter);
+            Base.Batter = getBatterNum();
+            GameLog.Enqueue("<B>" + Base.batOrder + "!" + getPlayerName(Base.Batter,TopBottom));
+        }
+        public void setPitch()
+        {
+
         }
         public void Pitch(PitchCase @case)
         {
@@ -72,6 +64,33 @@ namespace ninezoneexample
                     break;
             }
         }
+        int getBatterNum()
+        {
+            int ret;
+            if (TopBottom == "Top")
+            {
+                ret = TopTeam.batorder[Base.batOrder];
+            }
+            else
+            {
+                ret = BottomTeam.batorder[Base.batOrder];
+            }
+            return ret;
+        }
+        public string getPlayerName(int number, string topbottom)
+        {
+            string ret;
+            if (topbottom == "Top")
+            {
+                ret = TopTeam.players[number];
+            }
+            else
+            {
+                ret = BottomTeam.players[number];
+            }
+            return ret;
+        }
+
 
         public void Accident(AccidentCase @case)
         {
@@ -83,97 +102,111 @@ namespace ninezoneexample
                     break;
             }
         }
-
-        public void RunorOut()
+        class TeamInformation
         {
-            int additionalPoint = 0;
-            foreach(var player in Base.current_H) {
-                additionalPoint++;
-            }
-            while(Base.current_O.Count>0)
+            public string Name = "None";
+            public int Score = 0;
+            public Dictionary<int, string> players = new Dictionary<int, string>();
+            public Dictionary<int, int> batorder = new Dictionary<int, int>();
+            public TeamInformation(string name)
             {
-                O++;
+                Name = name;
             }
-            Base.current_H.Clear();
-            Base.current_O.Clear();
-            
         }
-    }
-    class TeamInformation
-    {
-        public string Name = "None";
-        public int Score = 0;
-        public Dictionary<int, string> players = new Dictionary<int, string>();
-        public Dictionary<int, int> batorder = new Dictionary<int, int>();
-        public TeamInformation(string name)
-        {
-            Name = name;
-        }
-    }
-    class Throwing
-    {
-        float velocity;
-        string pitch;
-        int location;
-    }
-    class BaseState
-    {
-        string last_1B = "None";
-        string last_2B = "None";
-        string last_3B = "None";
-        public string current_1B = "None";
-        public string current_2B = "None";
-        public string current_3B = "None";
-        public int batOrder = 0;
-        public List<string> current_H = new List<string>();//홈인 한 사람
-        public List<string> current_O = new List<string>();//아웃 된 사람
-        public Queue<TurnEndLog> log = new Queue<TurnEndLog>();
 
-        public void HitCaseLog(List<Position> defence, string batter, int outcount)
+        class BaseState
         {
-            if (current_O.Count == 0)
-            {
+            string last_1B = "None";
+            string last_2B = "None";
+            string last_3B = "None";
+            public string current_1B = "None";
+            public string current_2B = "None";
+            public string current_3B = "None";
 
-            }
-            if (current_O.Count == 1) // 아웃 한사람 1명
+            public int batOrder = 0;
+            public int Batter = 0;
+
+            public int S = 0;
+            public int B = 0;
+            public int O = 0;
+
+            public List<int> current_H = new List<int>();//홈인 한 사람
+            public List<int> current_O = new List<int>();//아웃 된 사람
+            public Queue<TurnEndLog> log = new Queue<TurnEndLog>();
+
+            public void HitCaseLog(List<Position> defence, string batter, int outcount)
             {
-                if (defence.Count == 1) // 수비 관여한 사람 1명
+                if (current_O.Count == 0)
                 {
-                    if (current_H.Count > 0)// 홈인 한 사람 1명 이상
+
+                }
+                if (current_O.Count == 1) // 아웃 한사람 1명
+                {
+                    if (defence.Count == 1) // 수비 관여한 사람 1명
                     {
-                        log.Enqueue(TurnEndLog.SACRIFICE_FLY);
+                        if (current_H.Count > 0)// 홈인 한 사람 1명 이상
+                        {
+                            log.Enqueue(TurnEndLog.SACRIFICE_FLY);
+                        }
+                        else log.Enqueue(TurnEndLog.FLYOUT);
                     }
-                    else log.Enqueue(TurnEndLog.FLYOUT);
+                    else if (defence.Count > 1) // 수비 관여한 사람 2명 이상
+                    {
+                        log.Enqueue(TurnEndLog.GROUNDOUT);
+                    }
                 }
-                else if (defence.Count > 1) // 수비 관여한 사람 2명 이상
+                if (current_O.Count == 2) //아웃한 사람 2명
                 {
-                    log.Enqueue(TurnEndLog.GROUNDOUT);
+                    if (defence.Count == 1)
+                    {
+                        log.Enqueue(TurnEndLog.DOUBLE_PLAY);
+                    }
                 }
-            }
-            if (current_O.Count == 2) //아웃한 사람 2명
-            {
-                if (defence.Count == 1)
+                if (current_O.Count == 3) //아웃한 사람 3명
                 {
-                    log.Enqueue(TurnEndLog.DOUBLE_PLAY);
+                    if (outcount == 0) log.Enqueue(TurnEndLog.TRIPLE_PLAY);
+                    else if (outcount == 1) log.Enqueue(TurnEndLog.DOUBLE_PLAY);
+
                 }
+
+                last_1B = current_1B;
+                last_2B = current_2B;
+                last_3B = current_3B;
             }
-            if (current_O.Count == 3) //아웃한 사람 3명
+            public void RunorOut()
             {
-                if (outcount == 0) log.Enqueue(TurnEndLog.TRIPLE_PLAY);
-                else if (outcount == 1) log.Enqueue(TurnEndLog.DOUBLE_PLAY);
+
+                int additionalPoint = 0;
+                foreach (var player in current_H)
+                {
+                    additionalPoint++;
+                }
+                foreach (var player in current_O)
+                {
+                    if(player == Batter);
+                    O++;
+                }
+                current_H.Clear();
+                current_O.Clear();
 
             }
 
-            last_1B = current_1B;
-            last_2B = current_2B;
-            last_3B = current_3B;
-        }
-        int advancedCountWithoutHomein()
-        {
+            int advancedCountWithoutHomein()
+            {
 
-            return 0;
+                return 0;
+            }
         }
+
     }
+
+    //class Throwing
+    //{
+    //    float velocity;
+    //    string pitch;
+    //    int location;
+    //}
+    
     enum Position
     {
         DH,//지명타자

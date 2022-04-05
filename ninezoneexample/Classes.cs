@@ -116,12 +116,12 @@ namespace ninezoneexample
 
         class BaseState
         {
-            string last_1B = "None";
-            string last_2B = "None";
-            string last_3B = "None";
-            public string current_1B = "None";
-            public string current_2B = "None";
-            public string current_3B = "None";
+            int last_1B = 0;
+            int last_2B = 0;
+            int last_3B = 0;
+            public int current_1B = 0;
+            public int current_2B = 0;
+            public int current_3B = 0;
 
             public int batOrder = 0;
             public int Batter = 0;
@@ -130,6 +130,7 @@ namespace ninezoneexample
             public int B = 0;
             public int O = 0;
 
+            public bool isBatterout = false;
             public List<int> current_H = new List<int>();//홈인 한 사람
             public List<int> current_O = new List<int>();//아웃 된 사람
             public Queue<TurnEndLog> log = new Queue<TurnEndLog>();
@@ -152,6 +153,17 @@ namespace ninezoneexample
                     }
                     else if (defence.Count > 1) // 수비 관여한 사람 2명 이상
                     {
+                        if (current_H.Count > 0)//홈인 한 사람 한명 이상
+                        {
+                            if (isBatterout)
+                            {
+                                log.Enqueue(TurnEndLog.SACRIFICE_BUNT);
+                            }
+                            else
+                            {
+                                if (Batter == current_1B) log.Enqueue(TurnEndLog.SINGLE_HIT);
+                            }
+                        }
                         log.Enqueue(TurnEndLog.GROUNDOUT);
                     }
                 }
@@ -183,7 +195,7 @@ namespace ninezoneexample
                 }
                 foreach (var player in current_O)
                 {
-                    if(player == Batter);
+                    if (player == Batter) isBatterout = true;
                     O++;
                 }
                 current_H.Clear();

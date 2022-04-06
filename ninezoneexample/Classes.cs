@@ -38,31 +38,44 @@ namespace ninezoneexample
             Base.Batter = getBatterNum();
             GameLog.Enqueue("<B>" + Base.batOrder + "!" + getPlayerName(Base.Batter,TopBottom));
         }
-        public void setPitch()
+        public void setPitch(PitchClass @class, float velocity, int location)
         {
-
+            GameLog.Enqueue("<P>" + @class.ToString() + "!" + velocity.ToString() + "?" + location);
         }
         public void Pitch(PitchCase @case)
         {
+            GameLog.Enqueue("<H>" + @case.ToString());
+
             switch (@case)
             {
                 case PitchCase.STRIKE:
+                    Base.S++;
                     break;
                 case PitchCase.SWING:
+                    Base.S++;
                     break;
                 case PitchCase.BALL:
+                    Base.B++;
                     break;
                 case PitchCase.FOUL:
+                    if (Base.S < 2) Base.S++;
                     break;
                 case PitchCase.HIT:
+                    Base.HitCaseLog();
+                    Base.RunorOut();
                     break;
                 case PitchCase.BUNT:
+                    Base.HitCaseLog();
+                    Base.RunorOut();
                     break;
                 case PitchCase.HOMERUN:
+                    Base.HomeRun();
                     break;
                 case PitchCase.HIT_BY_PITCH:
+                    Base.HomeRun();
                     break;
             }
+            Base.EndPitch();
         }
         int getBatterNum()
         {
@@ -133,9 +146,14 @@ namespace ninezoneexample
             public bool isBatterout = false;
             public List<int> current_H = new List<int>();//홈인 한 사람
             public List<int> current_O = new List<int>();//아웃 된 사람
+            public List<Position> defence = new List<Position>();
             public Queue<TurnEndLog> log = new Queue<TurnEndLog>();
 
-            public void HitCaseLog(List<Position> defence, string batter, int outcount)
+
+            public void HomeRun() { }
+            public void HitByPitch() { }
+            public void EndPitch() { }
+            public void HitCaseLog()
             {
                 if (current_O.Count == 0)
                 {
@@ -155,16 +173,16 @@ namespace ninezoneexample
                     {
                         if (current_H.Count > 0)//홈인 한 사람 한명 이상
                         {
-                            if (isBatterout)
+                            if (isBatterout) //타자가 아웃되었을 때
                             {
                                 log.Enqueue(TurnEndLog.SACRIFICE_BUNT);
                             }
                             else
                             {
-                                if (Batter == current_1B) log.Enqueue(TurnEndLog.SINGLE_HIT);
+                                log.Enqueue(TurnEndLog.GROUNDOUT);
                             }
                         }
-                        log.Enqueue(TurnEndLog.GROUNDOUT);
+                        else log.Enqueue(TurnEndLog.GROUNDOUT);
                     }
                 }
                 if (current_O.Count == 2) //아웃한 사람 2명
@@ -176,9 +194,8 @@ namespace ninezoneexample
                 }
                 if (current_O.Count == 3) //아웃한 사람 3명
                 {
-                    if (outcount == 0) log.Enqueue(TurnEndLog.TRIPLE_PLAY);
-                    else if (outcount == 1) log.Enqueue(TurnEndLog.DOUBLE_PLAY);
-
+                    if (O == 0) log.Enqueue(TurnEndLog.TRIPLE_PLAY);
+                    else if (O == 1) log.Enqueue(TurnEndLog.DOUBLE_PLAY);
                 }
 
                 last_1B = current_1B;

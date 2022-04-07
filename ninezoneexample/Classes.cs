@@ -72,7 +72,7 @@ namespace ninezoneexample
                     Base.HomeRun();
                     break;
                 case PitchCase.HIT_BY_PITCH:
-                    Base.HomeRun();
+                    Base.HitByPitch();
                     break;
             }
             Base.EndPitch();
@@ -132,6 +132,7 @@ namespace ninezoneexample
             int last_1B = 0;
             int last_2B = 0;
             int last_3B = 0;
+
             public int current_1B = 0;
             public int current_2B = 0;
             public int current_3B = 0;
@@ -149,25 +150,53 @@ namespace ninezoneexample
             public List<Position> defence = new List<Position>();
             public Queue<TurnEndLog> log = new Queue<TurnEndLog>();
 
-
             public void HomeRun() { }
             public void HitByPitch() { }
-            public void EndPitch() { }
-            public void HitCaseLog()
+            public TurnEndLog EndPitch() {
+                TurnEndLog ret = TurnEndLog.DEFAULT;
+                if (S >= 3)
+                {
+                    ret = TurnEndLog.STRIKEOUT;
+                }
+                else if (B >= 4)
+                {
+                    ret = TurnEndLog.WALK;
+                };
+                
+                return ret;
+            }
+            public int getRBI()
             {
+                return current_H.Count;
+            }
+            public TurnEndLog HitCaseLog()
+            {
+                TurnEndLog ret = TurnEndLog.DEFAULT;
                 if (current_O.Count == 0)
                 {
-
+                    if (current_1B == Batter) ret = TurnEndLog.SINGLE_HIT;
+                    else if (current_2B == Batter) ret = TurnEndLog.DOUBLE_HIT;
+                    else if (current_3B == Batter) ret = TurnEndLog.TRIPLE_HIT;
                 }
-                if (current_O.Count == 1) // 아웃 한사람 1명
+                else if (current_O.Count == 1) // 아웃 한사람 1명
                 {
                     if (defence.Count == 1) // 수비 관여한 사람 1명
                     {
                         if (current_H.Count > 0)// 홈인 한 사람 1명 이상
                         {
-                            log.Enqueue(TurnEndLog.SACRIFICE_FLY);
+                            if (isBatterout) //타자가 아웃되었을 때
+                            {
+                                ret = TurnEndLog.SACRIFICE_FLY;
+                            }
+                            else
+                            {
+                                ret = TurnEndLog.GROUNDOUT;
+                            }
                         }
-                        else log.Enqueue(TurnEndLog.FLYOUT);
+                        else
+                        {
+                            ret = TurnEndLog.FLYOUT;
+                        }
                     }
                     else if (defence.Count > 1) // 수비 관여한 사람 2명 이상
                     {
@@ -175,36 +204,35 @@ namespace ninezoneexample
                         {
                             if (isBatterout) //타자가 아웃되었을 때
                             {
-                                log.Enqueue(TurnEndLog.SACRIFICE_BUNT);
+                                ret = TurnEndLog.SACRIFICE_BUNT;
                             }
                             else
                             {
-                                log.Enqueue(TurnEndLog.GROUNDOUT);
+                                ret = TurnEndLog.GROUNDOUT;
                             }
                         }
-                        else log.Enqueue(TurnEndLog.GROUNDOUT);
+                        else
+                        {
+                            ret = TurnEndLog.GROUNDOUT;
+                        }
                     }
                 }
-                if (current_O.Count == 2) //아웃한 사람 2명
+                else if (current_O.Count == 2) //아웃한 사람 2명
                 {
-                    if (defence.Count == 1)
-                    {
-                        log.Enqueue(TurnEndLog.DOUBLE_PLAY);
-                    }
+                    ret = TurnEndLog.DOUBLE_PLAY;
                 }
-                if (current_O.Count == 3) //아웃한 사람 3명
+                else if (current_O.Count == 3) //아웃한 사람 3명
                 {
-                    if (O == 0) log.Enqueue(TurnEndLog.TRIPLE_PLAY);
-                    else if (O == 1) log.Enqueue(TurnEndLog.DOUBLE_PLAY);
+                    ret = TurnEndLog.TRIPLE_PLAY;
                 }
 
                 last_1B = current_1B;
                 last_2B = current_2B;
                 last_3B = current_3B;
+                return ret;
             }
             public void RunorOut()
             {
-
                 int additionalPoint = 0;
                 foreach (var player in current_H)
                 {
@@ -217,7 +245,6 @@ namespace ninezoneexample
                 }
                 current_H.Clear();
                 current_O.Clear();
-
             }
 
             int advancedCountWithoutHomein()
@@ -278,6 +305,7 @@ namespace ninezoneexample
     }
     enum TurnEndLog
     {
+        DEFAULT,
         //HIT
         SINGLE_HIT,//1루타
         DOUBLE_HIT,//2루타

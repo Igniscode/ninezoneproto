@@ -12,35 +12,35 @@ namespace ninezoneexample
     class StateProcessManager
     {
         BaseState Base = new BaseState();
-        public string Pitcher = "None";
         TeamInformation TopTeam = new TeamInformation("Socks");
         TeamInformation BottomTeam = new TeamInformation("Shoes");
         public int inning = 0;
-        public string TopBottom = "Top"; // 현재 공격인 팀
-        public string AttackTeam;
+        public string Attack = "Top"; // 현재 공격인 팀
+        public string Defence = "Bottom";
 
         public Queue<string> GameLog = new Queue<string>();
-        
+
         public void InningStart()
         {
-            GameLog.Enqueue("<I>" + inning.ToString());  
+            GameLog.Enqueue("<I>" + inning.ToString());
         }
 
         public void SetAttackTeam(string tb)
         {
-            if (TopBottom == "Top") AttackTeam = TopTeam.Name;
-            else if (TopBottom == "Bottom") AttackTeam = BottomTeam.Name;
+            string AttackTeam;
+            if (Attack == "Top") AttackTeam = TopTeam.Name;
+            else AttackTeam = BottomTeam.Name;
             GameLog.Enqueue("<T>" + AttackTeam);
         }
 
         public void SetBatter()
         {
             Base.Batter = getBatterNum();
-            GameLog.Enqueue("<B>" + Base.batOrder + "!" + getPlayerName(Base.Batter,TopBottom));
+            GameLog.Enqueue("<B>" + Base.batOrder + "!" + getPlayerName(Base.Batter, Attack));
         }
         public void setPitch(PitchClass @class, float velocity, int location)
         {
-            GameLog.Enqueue("<P>" + @class.ToString() + "!" + velocity.ToString() + "?" + location);
+            GameLog.Enqueue("<P>" + @class.ToString() + "#" + velocity.ToString() + "?" + location + "!" + getPlayerName(Base.Pitcher, Defence));
         }
         public void Pitch(PitchCase @case)
         {
@@ -50,37 +50,43 @@ namespace ninezoneexample
             {
                 case PitchCase.STRIKE:
                     Base.S++;
+                    Base.EndPitch();
                     break;
                 case PitchCase.SWING:
                     Base.S++;
+                    Base.EndPitch();
                     break;
                 case PitchCase.BALL:
                     Base.B++;
+                    Base.EndPitch();
                     break;
                 case PitchCase.FOUL:
                     if (Base.S < 2) Base.S++;
+                    Base.EndPitch();
                     break;
                 case PitchCase.HIT:
                     Base.HitCaseLog();
-                    Base.RunorOut();
                     break;
                 case PitchCase.BUNT:
                     Base.HitCaseLog();
-                    Base.RunorOut();
                     break;
                 case PitchCase.HOMERUN:
                     Base.HomeRun();
                     break;
                 case PitchCase.HIT_BY_PITCH:
-                    Base.HitByPitch();
+                    Base.Walk();
                     break;
             }
-            Base.EndPitch();
+            Base.RunorOut();
+            if(Base.O > 2)
+            {
+                SetBatter();
+            }
         }
         int getBatterNum()
         {
             int ret;
-            if (TopBottom == "Top")
+            if (Attack == "Top")
             {
                 ret = TopTeam.batorder[Base.batOrder];
             }
@@ -139,30 +145,89 @@ namespace ninezoneexample
 
             public int batOrder = 0;
             public int Batter = 0;
-
+            public int Pitcher = 0;
             public int S = 0;
             public int B = 0;
             public int O = 0;
 
-            public bool isBatterout = false;
             public List<int> current_H = new List<int>();//홈인 한 사람
             public List<int> current_O = new List<int>();//아웃 된 사람
-            public List<Position> defence = new List<Position>();
+            public Queue<Position> defence = new Queue<Position>();
             public Queue<TurnEndLog> log = new Queue<TurnEndLog>();
 
-            public void HomeRun() { }
-            public void HitByPitch() { }
-            public TurnEndLog EndPitch() {
+            public void reset()
+            {
+                last_1B = 0;
+                last_2B = 0;
+                last_3B = 0;
+
+                current_1B = 0;
+                current_2B = 0;
+                current_3B = 0;
+
+                batOrder = 0;
+                Batter = 0;
+                Pitcher = 0;
+                S = 0;
+                B = 0;
+                O = 0;
+
+                current_H.Clear();
+                current_O.Clear();
+                defence.Clear();
+                log.Clear();
+            }
+            public void HomeRun()
+            {
+                if (last_3B != 0) current_H.Add(last_3B);
+                if (last_2B != 0) current_H.Add(last_2B);
+                if (last_1B != 0) current_H.Add(last_1B);
+                current_H.Add(Batter);
+            }
+
+            public void Walk()//밀어내기
+            {
+                if (last_1B == 0)
+                {
+                    current_1B = Batter;
+                    current_2B = last_2B;
+                    current_3B = last_3B;
+                }
+                else if (last_2B == 0)
+                {
+                    current_1B = Batter;
+                    current_2B = last_1B;
+                    current_3B = last_3B;
+                }
+                else if (last_3B == 0)
+                {
+                    current_1B = Batter;
+                    current_2B = last_1B;
+                    current_3B = last_2B;
+                }
+                else
+                {
+                    current_1B = Batter;
+                    current_2B = last_1B;
+                    current_3B = last_2B;
+                    current_H.Add(last_3B);
+                }
+
+            }
+            public TurnEndLog EndPitch()
+            {
                 TurnEndLog ret = TurnEndLog.DEFAULT;
                 if (S >= 3)
                 {
+                    current_O.Add(Batter);
                     ret = TurnEndLog.STRIKEOUT;
                 }
                 else if (B >= 4)
                 {
+                    Walk();
                     ret = TurnEndLog.WALK;
                 };
-                
+
                 return ret;
             }
             public int getRBI()
@@ -172,6 +237,11 @@ namespace ninezoneexample
             public TurnEndLog HitCaseLog()
             {
                 TurnEndLog ret = TurnEndLog.DEFAULT;
+                bool isBatterout = false;
+                foreach (var player in current_O)
+                {
+                    if (player == Batter) isBatterout = true;
+                }
                 if (current_O.Count == 0)
                 {
                     if (current_1B == Batter) ret = TurnEndLog.SINGLE_HIT;
@@ -231,7 +301,7 @@ namespace ninezoneexample
                 last_3B = current_3B;
                 return ret;
             }
-            public void RunorOut()
+            public int RunorOut()
             {
                 int additionalPoint = 0;
                 foreach (var player in current_H)
@@ -240,11 +310,13 @@ namespace ninezoneexample
                 }
                 foreach (var player in current_O)
                 {
-                    if (player == Batter) isBatterout = true;
                     O++;
                 }
-                current_H.Clear();
-                current_O.Clear();
+                if (O > 2)
+                {
+                    reset();
+                }
+                return additionalPoint;
             }
 
             int advancedCountWithoutHomein()
@@ -262,7 +334,7 @@ namespace ninezoneexample
     //    string pitch;
     //    int location;
     //}
-    
+
     enum Position
     {
         DH,//지명타자
